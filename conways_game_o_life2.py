@@ -1,6 +1,4 @@
 #!../bin/python3
-
-import json
 import os
 import pygame
 from collections import defaultdict
@@ -18,11 +16,11 @@ class Cell:
         self.y = y
         self.w = w
         self.h = h
-        self.gen = 0
         self.rect = (x,y,w,h)
-
+        self.gen=0
+    
     def __add__(self, oprand:tuple[int,int]):
-        temp = Cell(self.x+oprand[0], self.y+oprand[1], self.w,self.h)
+        temp = Cell(self.x+oprand[0], self.y+oprand[1], self.w, self.h)
         temp.gen=self.gen+1
         return temp
 
@@ -31,9 +29,9 @@ class env():
     def __init__(self, width, height):
         self.win_size = pygame.Rect(0,0,width,height)
         self.win = pygame.display.set_mode(self.win_size.bottomright)
-        self.left_sec_rect = pygame.Rect(0,0,width-150,height)
-        self.right_sec_rect = pygame.Rect(width-150,0,150,height)
-        self.clock = pygame.time.Clock()
+        self.left_sec_rect = pygame.Rect(0,0,width-100,height)
+        self.right_sec_rect = pygame.Rect(width-200,0,200,height)
+        self.tick = pygame.time.Clock().tick
         pygame.display.set_caption(title=__file__.split('\\')[-1],icontitle=__file__.split('\\')[-1])
         pygame.mouse.set_cursor(pygame.cursors.broken_x)
         self.fps = 60
@@ -49,8 +47,6 @@ class env():
         self.mouse_hold = False
         self.any_update = True
         self.isrunning = False
-
-        # 
 
     def reset(self):
         self.live_cells.clear()
@@ -88,8 +84,8 @@ class env():
 
     def update(self):
         self.win.fill((0,0,0),self.left_sec_rect)
-        self.draw_grid()
         self.win.fill((200,200,200),self.right_sec_rect)
+        self.draw_grid()
         pygame.display.flip()
 
     def normalize(self, x):
@@ -134,23 +130,25 @@ class env():
             pygame.draw.rect(self.win, (200,c.gen%256,(c.gen//6)%256), c)
 
     def draw_grid(self):
-        for y in range(self.block_size,self.left_sec_rect.h,self.block_size):
-            for x in range(self.block_size,self.left_sec_rect.w,self.block_size):
-                pygame.draw.line(self.win, (0,0,100), (x,0), (x,self.left_sec_rect.h), 1)
-            pygame.draw.line(self.win, (0,0,100), (0,y), (self.left_sec_rect.w,y), 1)
+        for y in range(self.block_size,self.win_size.h,self.block_size):
+            for x in range(self.block_size,self.win_size.w,self.block_size):
+                pygame.draw.line(self.win, (0,0,100), (x,0), (x,self.win_size.h), 1)
+            pygame.draw.line(self.win, (0,0,100), (0,y), (self.win_size.w,y), 1)
 
     def run(self):
         self.reset()
         while not pygame.event.get(pygame.QUIT):
 
-            # self.clock.tick(self.fps)
+            self.tick(self.fps)
 
             self.key_binding()
 
-            if self.evo_delay == 0 or pygame.time.get_ticks()-self.curr_epoch >= self.evo_delay:
-                if self.isrunning:
+            if self.isrunning:
+                if pygame.time.get_ticks()-self.curr_epoch >= self.evo_delay:
                     self.evolve_forward()
                     self.curr_epoch = pygame.time.get_ticks()
+                    
+
         
         pygame.quit()
 
@@ -158,4 +156,4 @@ class env():
 if __name__ == "__main__":
     env = env(1000,600)
     env.run()
-    os.system("clear")
+    os.system("cls")
