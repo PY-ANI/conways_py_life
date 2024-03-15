@@ -6,6 +6,38 @@ import pygame
 from collections import defaultdict
 from dataclasses import dataclass
 
+class label():
+    def __init__(self,win:pygame.Surface,x:int,y:int,text:str="",size:int=10):
+        self.win = win
+        self.surf = pygame.font.Font("fonts/KodeMono-SemiBold.ttf",size).render(text,True,(20,20,20))
+        self.rect = self.surf.get_rect(topleft=(x,y))
+
+    def draw(self):
+        self.win.blit(self.surf, self.rect)
+
+class btn():
+    def __init__(self,win:pygame.Surface,x:int,y:int,width:None|int=None,height:None|int=None,text:str="",size:int=10):
+        self.win = win
+        self.surf = pygame.font.Font("fonts/KodeMono-SemiBold.ttf",size).render(text,True,(20,20,20))
+        self.rect = self.surf.get_rect(topleft=(x,y))
+
+    def draw(self):
+        self.win.blit(self.surf, self.rect)
+        pygame.draw.rect(self.win,(0,0,0),self.rect,1,2)
+
+class live_label():
+    def __init__(self,win:pygame.Surface,x:int,y:int,width:int,height:int,size:int=10):
+        self.win = win
+        self.font_kernel = pygame.font.Font("fonts/KodeMono-SemiBold.ttf",size)
+        self.rect = pygame.Rect(x,y,width,height)
+
+    def render(self,text:str):
+        self.win.fill((200,200,200), self.rect)
+        tsurf = self.font_kernel.render(text,True,(20,20,20))
+        trect = tsurf.get_rect(center=self.rect.center)
+        self.win.blit(tsurf, trect)
+        pygame.display.update(self.rect)
+
 @dataclass(init=True,unsafe_hash=True)
 class Cell:
     x:int
@@ -26,33 +58,51 @@ class Cell:
         temp.gen=self.gen+1
         return temp
 
+
 class env():
     pygame.init()
     def __init__(self, width, height):
+        # env config
         self.win_size = pygame.Rect(0,0,width,height)
-        self.win = pygame.display.set_mode(self.win_size.bottomright)
         self.left_sec_rect = pygame.Rect(0,0,width-150,height)
         self.right_sec_rect = pygame.Rect(width-150,0,150,height)
-        self.clock = pygame.time.Clock()
-        pygame.display.set_caption(title=__file__.split('\\')[-1],icontitle=__file__.split('\\')[-1])
-        pygame.mouse.set_cursor(pygame.cursors.broken_x)
         self.fps = 60
         self.block_size = 10
         self.cell_size = 6
         self.cell_offset = 2
-        self.curr_epoch = pygame.time.get_ticks()
-        self.evo_delay = 100 # in mili second
-        
-        self.live_cells = set()
-        self.adjacent_cell = defaultdict(int)
-        self.neighbours = [(x,y) for y in range(-self.block_size,self.block_size*2,self.block_size) for x in range(-self.block_size,self.block_size*2,self.block_size) if (x,y) != (0,0)]
+        self.evo_delay = 100 # in mili second        
         self.mouse_hold = False
         self.any_update = True
         self.isrunning = False
-
-        # 
+        self.generation = 0
+        # env vars
+        self.win = pygame.display.set_mode(self.win_size.bottomright)
+        self.clock = pygame.time.Clock()
+        pygame.display.set_caption(title=__file__.split('\\')[-1],icontitle=__file__.split('\\')[-1])
+        pygame.mouse.set_cursor(pygame.cursors.broken_x)
+        self.curr_epoch = pygame.time.get_ticks()
+        self.live_cells = set()
+        self.adjacent_cell = defaultdict(int)
+        self.neighbours = [(x,y) for y in range(-self.block_size,self.block_size*2,self.block_size) for x in range(-self.block_size,self.block_size*2,self.block_size) if (x,y) != (0,0)]
+        # right section
+        self.labels = [
+            label(self.win,self.right_sec_rect.x,4,text="-File--------",size=18),
+            label(self.win,self.right_sec_rect.x,100,text="-Env-Control-",size=18),
+            label(self.win,self.right_sec_rect.x+10,130,text="Evo Delay",size=14),
+            ]
+        self.buttons = [
+            btn(self.win,self.right_sec_rect.x+10,40,text=" Load  ",size=16),
+            btn(self.win,self.right_sec_rect.x+10,70,text=" Export  ",size=16),
+            btn(self.win,self.right_sec_rect.x+10,150,text=" + ",size=16),
+            btn(self.win,self.right_sec_rect.right-40,150,text=" - ",size=16),
+            ]
+        self.dynamic_label = live_label(self.win,self.right_sec_rect.centerx-30,150,60,20,14)
+        # text
+        self.text_k = pygame.font.Font("fonts/KodeMono-SemiBold.ttf",20)
+        
 
     def reset(self):
+        self.generation = 0
         self.live_cells.clear()
         self.adjacent_cell.clear()
         self.update()
@@ -85,11 +135,12 @@ class env():
         for c in cleanup: self.win.fill((0,0,0),c.rect)
         self.draw_live_cells()
         pygame.display.flip()
+        self.generation += 1
 
     def update(self):
         self.win.fill((0,0,0),self.left_sec_rect)
         self.draw_grid()
-        self.win.fill((200,200,200),self.right_sec_rect)
+        self.draw_menu()
         pygame.display.flip()
 
     def normalize(self, x):
@@ -118,10 +169,12 @@ class env():
         elif click_up:=pygame.event.get(pygame.MOUSEBUTTONUP):
             self.mouse_hold = 0
         elif pygame.event.get(pygame.MOUSEMOTION) and self.mouse_hold:
-            if self.mouse_hold == 1:
-                self.set_value(*map(self.normalize, pygame.mouse.get_pos()))
-            elif self.mouse_hold == 3:
-                self.del_value(*map(self.normalize, pygame.mouse.get_pos()))
+            m_pos = pygame.mouse.get_pos()
+            if self.left_sec_rect.collidepoint(m_pos):
+                if self.mouse_hold == 1:
+                    self.set_value(*map(self.normalize, m_pos))
+                elif self.mouse_hold == 3:
+                    self.del_value(*map(self.normalize, m_pos))
         
         if key:=pygame.event.get(pygame.KEYDOWN):
             if key[0].key == 32:
@@ -129,6 +182,12 @@ class env():
                 else: self.isrunning=True
             if key[0].key == 8: self.reset()
 
+    def draw_menu(self):
+        self.win.fill((200,200,200),self.right_sec_rect)
+        for label in self.labels: label.draw()
+        for button in self.buttons: button.draw()
+        self.dynamic_label.render(str(self.evo_delay))
+    
     def draw_live_cells(self):
         for c in self.live_cells:
             pygame.draw.rect(self.win, (200,c.gen%256,(c.gen//6)%256), c)
