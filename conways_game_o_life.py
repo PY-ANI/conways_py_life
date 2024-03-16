@@ -67,8 +67,8 @@ class env():
         self.left_sec_rect = pygame.Rect(0,0,width-150,height)
         self.right_sec_rect = pygame.Rect(width-150,0,150,height)
         self.fps = 60
-        self.block_size = 6
-        self.cell_size = 6
+        self.block_size = 5
+        self.cell_size = 5
         # self.cell_offset = 2
         self.evo_delay = 100 # in mili second        
         self.mouse_hold = False
@@ -101,10 +101,27 @@ class env():
             ]
         self.evo_delay_label = live_label(self.win,self.right_sec_rect.centerx-30,150,60,20,14)
         self.gen_count_label = live_label(self.win,self.right_sec_rect.centerx-30,350,60,20,14)
-        self.live_cell_label = live_label(self.win,self.right_sec_rect.centerx-30,400,60,20,14)
-        # text
-        self.text_k = pygame.font.Font("fonts/KodeMono-SemiBold.ttf",20)
-        
+        self.live_cell_label = live_label(self.win,self.right_sec_rect.centerx-30,390,60,20,14)
+        self.action_list = [
+            self.load_pattern,
+            self.save_pattern,
+            self.increase_delay,
+            self.decrease_delay,
+        ]
+
+    def load_pattern(self):
+        pass
+
+    def save_pattern(self):
+        pass
+
+    def increase_delay(self):
+        self.evo_delay += 50 if self.evo_delay < 1000 else 0
+        self.evo_delay_label.render(str(self.evo_delay))
+
+    def decrease_delay(self):
+        self.evo_delay -= 50 if self.evo_delay > 0 else 0
+        self.evo_delay_label.render(str(self.evo_delay))
 
     def reset(self):
         self.generation = 0
@@ -171,6 +188,12 @@ class env():
                     self.set_value(*map(self.normalize, click_down[0].pos))
                 elif self.mouse_hold == 3:
                     self.del_value(*map(self.normalize, click_down[0].pos))
+            else:
+                for i, func in enumerate(self.action_list):
+                    rect = self.buttons[i].rect
+                    if rect.collidepoint(click_down[0].pos):
+                        func()
+                        break
         elif click_up:=pygame.event.get(pygame.MOUSEBUTTONUP):
             self.mouse_hold = 0
         elif pygame.event.get(pygame.MOUSEMOTION) and self.mouse_hold:
