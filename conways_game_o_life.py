@@ -67,9 +67,9 @@ class env():
         self.left_sec_rect = pygame.Rect(0,0,width-150,height)
         self.right_sec_rect = pygame.Rect(width-150,0,150,height)
         self.fps = 60
-        self.block_size = 10
+        self.block_size = 6
         self.cell_size = 6
-        self.cell_offset = 2
+        # self.cell_offset = 2
         self.evo_delay = 100 # in mili second        
         self.mouse_hold = False
         self.any_update = True
@@ -83,12 +83,15 @@ class env():
         self.curr_epoch = pygame.time.get_ticks()
         self.live_cells = set()
         self.adjacent_cell = defaultdict(int)
-        self.neighbours = [(x,y) for y in range(-self.block_size,self.block_size*2,self.block_size) for x in range(-self.block_size,self.block_size*2,self.block_size) if (x,y) != (0,0)]
+        self.neighbours = [(x,y) for y in range(-1,2,1) for x in range(-1,2,1) if (x,y) != (0,0)]
         # right section
         self.labels = [
             label(self.win,self.right_sec_rect.x,4,text="-File--------",size=18),
             label(self.win,self.right_sec_rect.x,100,text="-Env-Control-",size=18),
-            label(self.win,self.right_sec_rect.x+10,130,text="Evo Delay",size=14),
+            label(self.win,self.right_sec_rect.x,300,text="-Env-Status--",size=18),
+            label(self.win,self.right_sec_rect.x+10,130,text=">Evo Delay",size=14),
+            label(self.win,self.right_sec_rect.x+10,330,text=">EVO-Generation",size=14),
+            label(self.win,self.right_sec_rect.x+10,370,text=">Live-Cell-Count",size=14),
             ]
         self.buttons = [
             btn(self.win,self.right_sec_rect.x+10,40,text=" Load  ",size=16),
@@ -96,7 +99,9 @@ class env():
             btn(self.win,self.right_sec_rect.x+10,150,text=" + ",size=16),
             btn(self.win,self.right_sec_rect.right-40,150,text=" - ",size=16),
             ]
-        self.dynamic_label = live_label(self.win,self.right_sec_rect.centerx-30,150,60,20,14)
+        self.evo_delay_label = live_label(self.win,self.right_sec_rect.centerx-30,150,60,20,14)
+        self.gen_count_label = live_label(self.win,self.right_sec_rect.centerx-30,350,60,20,14)
+        self.live_cell_label = live_label(self.win,self.right_sec_rect.centerx-30,400,60,20,14)
         # text
         self.text_k = pygame.font.Font("fonts/KodeMono-SemiBold.ttf",20)
         
@@ -118,7 +123,7 @@ class env():
         self.adjacent_cell.clear()
         for cell in self.live_cells:
             for ncell in self.neighbours:
-                temp = cell+ncell
+                temp = cell+tuple(map(lambda x:x*self.block_size, ncell))
                 if self.left_sec_rect.contains(temp.rect):
                     self.adjacent_cell[temp] += 1
 
@@ -144,7 +149,7 @@ class env():
         pygame.display.flip()
 
     def normalize(self, x):
-        return x-x%self.block_size+self.cell_offset
+        return x-x%self.block_size # +self.cell_offset
 
     def set_value(self, x, y):
         temp = Cell(x,y,self.cell_size,self.cell_size)
@@ -186,7 +191,9 @@ class env():
         self.win.fill((200,200,200),self.right_sec_rect)
         for label in self.labels: label.draw()
         for button in self.buttons: button.draw()
-        self.dynamic_label.render(str(self.evo_delay))
+        self.evo_delay_label.render(str(self.evo_delay))
+        self.gen_count_label.render(str(self.generation))
+        self.live_cell_label.render(str(self.live_cells.__len__()))
     
     def draw_live_cells(self):
         for c in self.live_cells:
@@ -209,6 +216,8 @@ class env():
             if self.evo_delay == 0 or pygame.time.get_ticks()-self.curr_epoch >= self.evo_delay:
                 if self.isrunning:
                     self.evolve_forward()
+                    self.gen_count_label.render(str(self.generation))
+                    self.live_cell_label.render(str(self.live_cells.__len__()))
                     self.curr_epoch = pygame.time.get_ticks()
         
         pygame.quit()
