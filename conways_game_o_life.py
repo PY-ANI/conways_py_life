@@ -1,6 +1,6 @@
 #!../bin/python3
 
-import toml
+import json
 import os
 import pygame
 from collections import defaultdict
@@ -110,9 +110,7 @@ class env():
         ]
 
     def load_pattern(self):
-        with open("patterns.toml","a") as f:
-            dct = {"pt":self.live_cells}
-            toml.dump(dct,f)
+        pass
 
     def save_pattern(self):
         pass
